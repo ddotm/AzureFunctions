@@ -8,7 +8,7 @@ namespace AzureFunction
 	public static class AzureFunction
 	{
 		[FunctionName("AzureFunction")]
-		public static void Run([TimerTrigger("* */30 * * * *")] TimerInfo myTimer, ILogger log)
+		public static void Run([TimerTrigger("* */35 * * * *")] TimerInfo myTimer, ILogger log)
 		{
 			log.LogInformation($"Azure Function triggered by timer. Executed at: {DateTime.Now}");
 		}

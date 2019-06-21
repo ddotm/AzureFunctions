@@ -21,3 +21,13 @@ Examples
 "0 15 0 * * *"	at 12:15 AM every day
 "0 */5 * * * *" once every 5 minutes
 "*/10 * * * * *" once every 10 seconds
+
+In Azure
+Create new Function App
+Download Publish Profile
+Right-click on the project, click Publish
+Select Existing
+Import Publish Profile
+Try running the Publish
+Navigate to the portal to make sure the function has deployed successfully
+
