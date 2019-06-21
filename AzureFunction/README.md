@@ -31,3 +31,5 @@ Import Publish Profile
 Try running the Publish
 Navigate to the portal to make sure the function has deployed successfully
 
+function.json schema
+http://json.schemastore.org/function
