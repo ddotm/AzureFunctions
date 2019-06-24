@@ -24,6 +24,11 @@ Examples
 
 In Azure
 Create new Function App
+<env>-<app>-function-name
+Hosting Plan -- Consumption Plan
+Runtime Stack - .NET Core
+Storage - use <app>azurefunctions<env>
+
 Download Publish Profile
 Right-click on the project, click Publish
 Select Existing

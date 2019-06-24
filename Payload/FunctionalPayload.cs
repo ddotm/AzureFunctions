@@ -15,7 +15,7 @@ namespace Payload
 
 		public async Task ExecuteAsync()
 		{
-			_log.LogInformation($"Azure Function triggered by timer. Executed at: {DateTime.Now}");
+			_log.LogInformation($"Azure Function triggered by timer (with CI/CD). Executed at: {DateTime.Now}");
 
 			await Task.CompletedTask;
 		}
