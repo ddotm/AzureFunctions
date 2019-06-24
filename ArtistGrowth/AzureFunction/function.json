@@ -1,0 +1,15 @@
+{
+  "disabled": false,
+  "entryPoint": "RunAsync",
+  "bindings": [
+    {
+      "type": "timerTrigger",
+      "schedule": "*/5 * * * * *",
+      "runOnStartup": true,
+      "dataType": "string",
+      "name": "myTimer",
+      "direction": "in"
+    }
+  ]
+
+}
