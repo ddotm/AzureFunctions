@@ -1,6 +1,6 @@
 {
   "disabled": false,
-  "entryPoint": "Run",
+  "entryPoint": "RunAsync",
   "bindings": [
     {
       "type": "timerTrigger",
