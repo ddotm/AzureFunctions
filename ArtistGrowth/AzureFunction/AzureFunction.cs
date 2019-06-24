@@ -8,8 +8,8 @@ namespace AzureFunction
 {
 	public static class AzureFunction
 	{
-		[FunctionName("AzureFunction")]
-		public static async Task RunAsync([TimerTrigger("*/10 * * * * *")] TimerInfo myTimer, ILogger log)
+		[FunctionName("ArtistGrowthAzureFunction")]
+		public static async Task RunAsync([TimerTrigger("*/5 * * * * *")] TimerInfo myTimer, ILogger log)
 		{
 			var payload = new FunctionalPayload(log);
 			await payload.ExecuteAsync();
