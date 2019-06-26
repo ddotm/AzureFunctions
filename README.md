@@ -1,5 +1,7 @@
 ﻿This is an Architecture Reference project for Azure Function.
 
+Add Microsoft.Extensions.Configuration.Abstractions NuGet package to use configurations
+
 To run it locally
 Open Visual Studio as Admin
 Start Microsoft Azure Storage Emulator as Admin
