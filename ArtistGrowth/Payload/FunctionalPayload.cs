@@ -26,9 +26,7 @@ namespace Payload
         {
             _log.LogInformation($"Artist Growth Azure Function with timer trigger (with CI/CD). Executed at: {DateTime.Now}");
 
-            var x = GetAlternateIdsInArtistGrowth();
-            x.Wait();
-            await Task.CompletedTask;
+            await GetAlternateIdsInArtistGrowth();
         }
 
         private async Task<bool> ProcessArtistGrowth()
@@ -77,8 +75,7 @@ namespace Payload
                             }
                         }
 
-                        //at this point we hopefully have all the venues related to the show for this client in AG
-                        //  so we should be able to update/insert all the shows for the client now
+                        //update/insert all the shows for the client now
                         var n = await _agWorker.SyncEvents(itin.Shows);
 
                         _tempoWorker.AddShowXref(itin.Shows);
