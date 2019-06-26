@@ -11,7 +11,7 @@ namespace Payload
 {
     public class FunctionalPayload
     {
-        private readonly ILogger _log;
+        private static ILogger _log;
         private static TempoWorker _tempoWorker;
         private static GCPWorker _gcpWorker;
         private static AGWorker _agWorker;
@@ -48,8 +48,6 @@ namespace Payload
 
                     //get the gcp itinerary for the artist (venues and shows)
                     var itin = _gcpWorker.GetItinerary(artist);
-                    Logger.WriteLine($"   {itin.Shows.Count()}", ConsoleColor.Green, " shows found");
-                    Logger.WriteLine($"   {itin.Venues.Count()}", ConsoleColor.Green, " distinct venues found");
 
                     // IF there are shows that need to updated/inserted, then continue
                     if (itin.Shows.Any())
@@ -298,23 +296,16 @@ namespace Payload
         {
             //// Tempo: Get Artist Xref
             Logger.WriteLine(":::Update Artist Growth alternateIds:::");
-            Logger.WriteLine("Get Tempo Artist Xref List: ");
+
             _tempoWorker = new TempoWorker();
-            Logger.WriteLine($"   {_tempoWorker.ArtistXrefs.Count} ", ConsoleColor.Green, "artist records retrieved");
-            Logger.WriteLine($"   {_tempoWorker.ShowXrefs.Count} ", ConsoleColor.Green, "show records retrieved");
-            Logger.WriteLine($"   {_tempoWorker.VenueXrefs.Count} ", ConsoleColor.Green, "venue records retrieved");
 
             //// GCP: Get Artists from GCP
-            Logger.WriteLine("Get GCP Artists:");
             _gcpWorker = new GCPWorker();
             _gcpArtists = _gcpWorker.GetArtistList(_tempoWorker.ArtistXrefs);
-            Logger.WriteLine($"  {_gcpArtists.Count} ", ConsoleColor.Green, "artist records retrieved");
 
             //// AG: Create AGWorker and Authenticate
             _agWorker = new AGWorker();
-            Logger.Write("Authenticating with Artist Growth... ");
             await _agWorker.Authenticate();
-            Logger.WriteLine("done", ConsoleColor.Green);
 
             Logger.WriteLine("------------------------------------------", ConsoleColor.Blue);
 

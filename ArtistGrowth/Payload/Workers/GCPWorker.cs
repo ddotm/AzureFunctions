@@ -8,6 +8,8 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Payload.Utilities;
 
 namespace Payload.Workers
 {
@@ -29,6 +31,8 @@ namespace Payload.Workers
 
         public List<GCPArtist> GetArtistList(List<ArtistXref> xrefArtists)
         {
+            Logger.WriteLine("Get GCP Artists:");
+
             var errors = ValidateArtistXRef(xrefArtists);
 
             if (string.IsNullOrWhiteSpace(errors) == false)
@@ -40,7 +44,11 @@ namespace Payload.Workers
             var artistIds = string.Join(",", ids);
             var temp = $"SELECT * FROM Artist Where `id` in ({artistIds})";
             var x = dbCon.QueryMultiple(temp);
-            return x.Read<GCPArtist>().ToList();
+            var result = x.Read<GCPArtist>().ToList();
+
+            Logger.WriteLine($"  {result.Count} ", ConsoleColor.Green, "artist records retrieved");
+
+            return result;
         }
 
         public List<GCPVenue> GetVenueList(List<ArtistXref> xrefArtists)
@@ -122,6 +130,9 @@ namespace Payload.Workers
             }
 
             MapAlternateIds(result);
+
+            Logger.WriteLine($"   {Shows.Count()}", ConsoleColor.Green, " shows found");
+            Logger.WriteLine($"   {Venues.Count()}", ConsoleColor.Green, " distinct venues found");
 
             return result;
         }

@@ -8,6 +8,7 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Payload.Utilities;
 
 namespace Payload.Workers
 {
@@ -20,8 +21,11 @@ namespace Payload.Workers
         private string _syncId = Guid.NewGuid().ToString();
         private SqlConnection db;
 
+
         public TempoWorker()
         {
+            Logger.WriteLine("Get Tempo Artist Xref List: ");
+
 //            // dev credentials
 //            var conString = "Server=tempodev.database.windows.net;Database=ContactDev;User ID=TempoDevAdmin;Password=tb9$8oN5T6w79N9g;Trusted_Connection=False;Connection Timeout=120";
 
@@ -36,6 +40,10 @@ namespace Payload.Workers
 
             GetVenueXrefs();
             GetShowXrefs();
+
+            Logger.WriteLine($"   {ArtistXrefs.Count} ", ConsoleColor.Green, "artist records retrieved");
+            Logger.WriteLine($"   {ShowXrefs.Count} ", ConsoleColor.Green, "show records retrieved");
+            Logger.WriteLine($"   {VenueXrefs.Count} ", ConsoleColor.Green, "venue records retrieved");
         }
 
 

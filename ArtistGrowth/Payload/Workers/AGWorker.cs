@@ -6,10 +6,12 @@ using System.Net.Http.Headers;
 
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Payload.Models.ArtistGrowth;
 using Payload.Models.GCP;
 using Payload.Models.Tempo;
 using Newtonsoft.Json;
+using Payload.Utilities;
 
 namespace Payload.Workers
 {
@@ -18,9 +20,10 @@ namespace Payload.Workers
         private HttpClient _httpClient;
         private string _token;
 
-
         public async Task<bool> Authenticate()
         {
+            Logger.Write("Authenticating with Artist Growth... ");
+
             // set up the basic client
             this._httpClient = new HttpClient();
 
@@ -56,7 +59,9 @@ namespace Payload.Workers
 
             // add auth token to header fpr future requests
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", _token);
-            
+
+            Logger.WriteLine("done", ConsoleColor.Green);
+
             return true;
         }
 
@@ -81,6 +86,11 @@ namespace Payload.Workers
         // VENUES
         public async Task<bool> SyncVenues(List<GCPVenue> gcpVenues)
         {
+            Logger.Write($"   Updating venues in Artist Growth... ");
+            Logger.Write($"   Inserting ");
+            Logger.Write($"{gcpVenues.Count}", ConsoleColor.Green);
+            Logger.Write($" new venue records into Artist Growth... ");
+
             foreach (var gcpVenue in gcpVenues)
             {
                 var agVenue = await this.GetVenueByAltId(gcpVenue.alternateId);
@@ -114,6 +124,9 @@ namespace Payload.Workers
                     }
                 }
             }
+
+            var c = gcpVenues.Count(w => w.ActionTaken.StartsWith("Updated"));
+            Logger.WriteLine($"{c} ", ConsoleColor.Red, "venues updated done");
 
             return true;
         }
