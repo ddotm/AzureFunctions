@@ -10,6 +10,13 @@ namespace Payload.Utilities
     {
         public static StringBuilder sbLog = new StringBuilder("");
 
+        public static void Write(string message)
+        {
+            Console.ResetColor();
+            Console.Write(message);
+            sbLog.Append(message);
+        }
+
         public static void Write(string message, ConsoleColor color)
         {
             Console.ForegroundColor = color;
@@ -17,11 +24,12 @@ namespace Payload.Utilities
             sbLog.Append(message);
         }
 
-        public static void Write(string message)
+
+        public static void WriteLine(string message)
         {
             Console.ResetColor();
-            Console.Write(message);
-            sbLog.Append(message);
+            Console.WriteLine(message);
+            sbLog.AppendLine(message);
         }
         public static void WriteLine(string message, ConsoleColor color)
         {
@@ -29,12 +37,10 @@ namespace Payload.Utilities
             Console.WriteLine(message);
             sbLog.AppendLine(message);
         }
-
-        public static void WriteLine(string message)
+        public static void WriteLine(string message, ConsoleColor color, string addtionalText)
         {
-            Console.ResetColor();
-            Console.WriteLine(message);
-            sbLog.AppendLine(message);
+            Write(message, color);
+            WriteLine(addtionalText);
         }
     }
 }

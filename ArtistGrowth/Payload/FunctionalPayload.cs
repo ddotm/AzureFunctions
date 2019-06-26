@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Payload.Models.GCP;
 using Payload.Utilities;
 using Payload.Workers;
 
@@ -10,8 +12,10 @@ namespace Payload
     public class FunctionalPayload
     {
         private readonly ILogger _log;
-        private static TempoWorker tempoWorker;
-        private static GCPWorker gcpWorker;
+        private static TempoWorker _tempoWorker;
+        private static GCPWorker _gcpWorker;
+        private static AGWorker _agWorker;
+        private static List<GCPArtist> _gcpArtists;
 
         public FunctionalPayload(ILogger log)
         {
@@ -22,6 +26,8 @@ namespace Payload
         {
             _log.LogInformation($"Artist Growth Azure Function with timer trigger (with CI/CD). Executed at: {DateTime.Now}");
 
+            var x = GetAlternateIdsInArtistGrowth();
+            x.Wait();
             await Task.CompletedTask;
         }
 
@@ -30,43 +36,20 @@ namespace Payload
             var startTime = DateTime.UtcNow;
             try
             {
-                // TEMPO: Get Cross Reference Data from Tempo
-                Logger.WriteLine("Get Tempo Artist Xref List: ");
-                tempoWorker = new TempoWorker();
-                Logger.Write($"   {tempoWorker.ArtistXrefs.Count} ", ConsoleColor.Green);
-                Logger.WriteLine("artist records retrieved");
-                Logger.Write($"   {tempoWorker.VenueXrefs.Count} ", ConsoleColor.Green);
-                Logger.WriteLine("venue records retrieved");
-
-                //// GCP: Get Artists from GCP
-                Logger.WriteLine("Get GCP Artists:");
-                gcpWorker = new GCPWorker();
-                var gcpArtists = gcpWorker.GetArtistList(tempoWorker.ArtistXrefs);
-                Logger.Write($"  {gcpArtists.Count} ", ConsoleColor.Green);
-                Logger.WriteLine("Artist records retrieved");
-
-                // AG: Create AGWorker and Authenticate
-                var agWorker = new AGWorker();
-                Logger.Write("Authenticating with Artist Growth... ");
-                await agWorker.Authenticate();
-                Logger.WriteLine("done", ConsoleColor.Green);
-
-                Logger.WriteLine("------------------------------------------");
+                // initialize Workers
+                var b = await Initialize();
 
                 // update the GCP Artist record with the AG ID from the X-Ref
-                foreach (var artist in tempoWorker.ArtistXrefs)
+                foreach (var artist in _tempoWorker.ArtistXrefs)
                 {
                     // link the calendar id to the artist record
-                    artist.ArtistName = gcpArtists.FirstOrDefault(i => i.Id == artist.GCPArtistId)?.Name;
-                    Logger.Write($"{artist.ArtistName}", ConsoleColor.Blue);
-                    Logger.WriteLine($"  [{artist.GCPArtistId}] - linked to calendar {artist.AGCalendarId}");
+                    artist.ArtistName = _gcpArtists.FirstOrDefault(i => i.Id == artist.GCPArtistId)?.Name;
+                    Logger.WriteLine($"{artist.ArtistName}", ConsoleColor.Blue, $"  [{artist.GCPArtistId}] - linked to calendar {artist.AGCalendarId}");
 
                     //get the gcp itinerary for the artist (venues and shows)
-                    var itin = gcpWorker.GetItinerary(artist);
-                    Logger.Write($"   {itin.Shows.Count()}", ConsoleColor.Green);
-                    Logger.WriteLine($" shows found");
-                    Logger.Write($"   {itin.Venues.Count()}", ConsoleColor.Green);
-                    Logger.WriteLine($" distinct venues found");
+                    var itin = _gcpWorker.GetItinerary(artist);
+                    Logger.WriteLine($"   {itin.Shows.Count()}", ConsoleColor.Green, " shows found");
+                    Logger.WriteLine($"   {itin.Venues.Count()}", ConsoleColor.Green, " distinct venues found");
 
                     // IF there are shows that need to updated/inserted, then continue
                     if (itin.Shows.Any())
@@ -74,17 +57,16 @@ namespace Payload
                         //link the venue's AG id from the xref table
                         foreach (var itinVenue in itin.Venues)
                         {
-                            var venue = tempoWorker.VenueXrefs.FirstOrDefault(i => i.GCPVenueId == itinVenue.id);
+                            var venue = _tempoWorker.VenueXrefs.FirstOrDefault(i => i.GCPVenueId == itinVenue.id);
                             itinVenue.AGVenueId = venue?.AGVenueId;
                         }
 
                         // update existing venues in AG (if needed)
                         Logger.Write($"   Updating venues in Artist Growth... ");
                         var linkedVenues = itin.Venues.Where(w => w.AGVenueId != null).ToList();
-                        await agWorker.SyncVenues(linkedVenues);
+                        await _agWorker.SyncVenues(linkedVenues);
                         var c = linkedVenues.Count(w => w.ActionTaken.StartsWith("Updated"));
-                        Logger.Write($"{c} ", ConsoleColor.Red);
-                        Logger.WriteLine("venues updated done");
+                        Logger.WriteLine($"{c} ", ConsoleColor.Red, "venues updated done");
 
                         // find any unlinked venues and sync with AG
                         var unlinkedVenues = itin.Venues.Where(w => w.AGVenueId == null).ToList();
@@ -94,7 +76,7 @@ namespace Payload
                             Logger.Write($"   Inserting ");
                             Logger.Write($"{unlinkedVenues.Count}", ConsoleColor.Green);
                             Logger.Write($" new venue records into Artist Growth... ");
-                            var m = await agWorker.SyncVenues(unlinkedVenues);
+                            var m = await _agWorker.SyncVenues(unlinkedVenues);
                             Logger.WriteLine("done", ConsoleColor.Green);
 
                             // log any AG errors
@@ -104,13 +86,13 @@ namespace Payload
                                 {
                                     Logger.Write($"      {venue.name} [{venue.alternateId}]: ");
                                     Logger.WriteLine($" {venue.ActionTaken} ", ConsoleColor.Red);
-                                    tempoWorker.WriteLog("Detail", $"{venue.name} [{venue.alternateId}]: {venue.ActionTaken}", DateTime.UtcNow);
+                                    _tempoWorker.WriteLog("Detail", $"{venue.name} [{venue.alternateId}]: {venue.ActionTaken}", DateTime.UtcNow);
                                 }
                             }
 
                             // write the new xrefs to the table for future syncs
                             Logger.Write($"   Updating Venue XRef table in Tempo ");
-                            tempoWorker.AddVenueXref(unlinkedVenues);
+                            _tempoWorker.AddVenueXref(unlinkedVenues);
                             Logger.WriteLine("done", ConsoleColor.Green);
                         }
 
@@ -132,7 +114,7 @@ namespace Payload
                         Logger.Write($"   Syncing ");
                         Logger.Write($"{itin.Shows.Count} ", ConsoleColor.Green);
                         Logger.Write($"unique show records with Artist Growth... ");
-                        var n = await agWorker.SyncEvents(itin.Shows);
+                        var n = await _agWorker.SyncEvents(itin.Shows);
                         Logger.WriteLine("done", ConsoleColor.Green);
 
                         foreach (var show in itin.Shows)
@@ -141,14 +123,14 @@ namespace Payload
                             {
                                 Logger.Write($"      {show.ShowName} [{show.alternateId}]: ");
                                 Logger.WriteLine($" {show.ActionTaken} ", ConsoleColor.Red);
-                                tempoWorker.WriteLog("Detail", $"{show.ShowName} [{show.alternateId}]: {show.ActionTaken}", DateTime.UtcNow);
+                                _tempoWorker.WriteLog("Detail", $"{show.ShowName} [{show.alternateId}]: {show.ActionTaken}", DateTime.UtcNow);
                             }
                         }
 
-                        tempoWorker.AddShowXref(itin.Shows);
+                        _tempoWorker.AddShowXref(itin.Shows);
 
                         //update the artist xref with new dates
-                        tempoWorker.UpdateArtistXref(itin.Artist);
+                        _tempoWorker.UpdateArtistXref(itin.Artist);
                     }
                 }
             }
@@ -160,8 +142,8 @@ namespace Payload
             {
                 Logger.Write($"Writing Summary Logger... ");
                 var logData = Logger.sbLog.ToString();
-                tempoWorker.WriteLog("Summary", logData, startTime);
-                tempoWorker.CloseConnection();
+                _tempoWorker.WriteLog("Summary", logData, startTime);
+                _tempoWorker.CloseConnection();
                 Logger.WriteLine("done", ConsoleColor.Green);
             }
 
@@ -170,37 +152,15 @@ namespace Payload
 
         static async Task<bool> UpdateAlternateIdsInArtistGrowth()
         {
-            //// Tempo: Get Artist Xref
-            Logger.WriteLine(":::Update Artist Growth alternateIds:::");
-            Logger.WriteLine("Get Tempo Artist Xref List: ");
-            tempoWorker = new TempoWorker();
-            Logger.Write($"   {tempoWorker.ArtistXrefs.Count} ", ConsoleColor.Green);
-            Logger.WriteLine("artist records retrieved");
-            Logger.Write($"   {tempoWorker.VenueXrefs.Count} ", ConsoleColor.Green);
-            Logger.WriteLine("venue records retrieved");
-
-            //// GCP: Get Artists from GCP
-            Logger.WriteLine("Get GCP Artists:");
-            gcpWorker = new GCPWorker();
-            var gcpArtists = gcpWorker.GetArtistList(tempoWorker.ArtistXrefs);
-            Logger.Write($"  {gcpArtists.Count} ", ConsoleColor.Green);
-            Logger.WriteLine("Artist records retrieved");
-
-            //// AG: Create AGWorker and Authenticate
-            var agWorker = new AGWorker();
-            Logger.Write("Authenticating with Artist Growth... ");
-            await agWorker.Authenticate();
-            Logger.WriteLine("done", ConsoleColor.Green);
-
-            Logger.WriteLine("------------------------------------------");
-
+            // initialize Workers
+            var b = await Initialize();
 
             //get all AG venues
-            var agVenues = await agWorker.GetAllVenues();
+            var agVenues = await _agWorker.GetAllVenues();
 
             //get all GCP venues using the alternateId's from AG
             var agvIds = agVenues.Select(s => s.alternate_id).ToList();
-            var gcpVenues = gcpWorker.GetVenueList(agvIds);
+            var gcpVenues = _gcpWorker.GetVenueList(agvIds);
 
             // loop through AG venues
             //      find GCP venue
@@ -222,7 +182,7 @@ namespace Payload
                     Logger.WriteLine($"Update Venue: {venue.name} ::::: {venue.alternate_id} => {gcpv.alternateId}");
                     try
                     {
-                        var x = await agWorker.UpdateVenue(gcpv, false);
+                        var x = await _agWorker.UpdateVenue(gcpv, false);
                     }
                     catch (Exception e)
                     {
@@ -232,11 +192,11 @@ namespace Payload
             }
 
             //get all AG events
-            var agShows = await agWorker.GetAllEvents();
+            var agShows = await _agWorker.GetAllEvents();
 
             //get all GCP shows/events using the alternateId's from AG
             var agsIds = agShows.Select(s => s.alternate_id).ToList();
-            var gcpShows = gcpWorker.GetShowList(agsIds);
+            var gcpShows = _gcpWorker.GetShowList(agsIds);
 
             // loop through AG events
             //      find GCP show
@@ -284,7 +244,7 @@ namespace Payload
                     show.status = "CANCELED";
                 }
 
-                var x = await agWorker.UpdateEvent(gcps, false);
+                var x = await _agWorker.UpdateEvent(gcps, false);
             }
 
             Logger.WriteLine($"{agShows.Count - venuesNotFound} shows found for name update", ConsoleColor.Green);
@@ -298,33 +258,11 @@ namespace Payload
 
         static async Task<bool> GetAlternateIdsInArtistGrowth()
         {
-            //// Tempo: Get Artist Xref
-            Logger.WriteLine(":::Update Artist Growth alternateIds:::");
-            Logger.WriteLine("Get Tempo Artist Xref List: ");
-            tempoWorker = new TempoWorker();
-            Logger.Write($"   {tempoWorker.ArtistXrefs.Count} ", ConsoleColor.Green);
-            Logger.WriteLine("artist records retrieved");
-            Logger.Write($"   {tempoWorker.VenueXrefs.Count} ", ConsoleColor.Green);
-            Logger.WriteLine("venue records retrieved");
-
-            //// GCP: Get Artists from GCP
-            Logger.WriteLine("Get GCP Artists:");
-            gcpWorker = new GCPWorker();
-            var gcpArtists = gcpWorker.GetArtistList(tempoWorker.ArtistXrefs);
-            Logger.Write($"  {gcpArtists.Count} ", ConsoleColor.Green);
-            Logger.WriteLine("Artist records retrieved");
-
-            //// AG: Create AGWorker and Authenticate
-            var agWorker = new AGWorker();
-            Logger.Write("Authenticating with Artist Growth... ");
-            await agWorker.Authenticate();
-            Logger.WriteLine("done", ConsoleColor.Green);
-
-            Logger.WriteLine("------------------------------------------", ConsoleColor.Blue);
-
+            // initialize Workers
+            var b = await Initialize();
 
             //get all AG venues
-            var agVenues = await agWorker.GetAllVenues();
+            var agVenues = await _agWorker.GetAllVenues();
             foreach (var venue in agVenues)
             {
                 if (venue.alternate_id.Contains("."))
@@ -340,7 +278,7 @@ namespace Payload
             Logger.WriteLine("------------------------------------------", ConsoleColor.Blue);
 
             //get all AG events
-            var agShows = await agWorker.GetAllEvents();
+            var agShows = await _agWorker.GetAllEvents();
             foreach (var show in agShows)
             {
                 if (show.alternate_id.Contains("."))
@@ -352,6 +290,33 @@ namespace Payload
                     Logger.WriteLine($"{show.alternate_id}:::::{show.name}:::::{show.status}", ConsoleColor.Red);
                 }
             }
+
+            return true;
+        }
+
+        static async Task<bool> Initialize()
+        {
+            //// Tempo: Get Artist Xref
+            Logger.WriteLine(":::Update Artist Growth alternateIds:::");
+            Logger.WriteLine("Get Tempo Artist Xref List: ");
+            _tempoWorker = new TempoWorker();
+            Logger.WriteLine($"   {_tempoWorker.ArtistXrefs.Count} ", ConsoleColor.Green, "artist records retrieved");
+            Logger.WriteLine($"   {_tempoWorker.ShowXrefs.Count} ", ConsoleColor.Green, "show records retrieved");
+            Logger.WriteLine($"   {_tempoWorker.VenueXrefs.Count} ", ConsoleColor.Green, "venue records retrieved");
+
+            //// GCP: Get Artists from GCP
+            Logger.WriteLine("Get GCP Artists:");
+            _gcpWorker = new GCPWorker();
+            _gcpArtists = _gcpWorker.GetArtistList(_tempoWorker.ArtistXrefs);
+            Logger.WriteLine($"  {_gcpArtists.Count} ", ConsoleColor.Green, "artist records retrieved");
+
+            //// AG: Create AGWorker and Authenticate
+            _agWorker = new AGWorker();
+            Logger.Write("Authenticating with Artist Growth... ");
+            await _agWorker.Authenticate();
+            Logger.WriteLine("done", ConsoleColor.Green);
+
+            Logger.WriteLine("------------------------------------------", ConsoleColor.Blue);
 
             return true;
         }
