@@ -26,6 +26,8 @@ namespace Payload
         {
             _log.LogInformation($"Artist Growth Azure Function with timer trigger (with CI/CD). Executed at: {DateTime.Now}");
 
+            //await ProcessArtistGrowth();
+            //await UpdateAlternateIdsInArtistGrowth();
             await GetAlternateIdsInArtistGrowth();
         }
 
