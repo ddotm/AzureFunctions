@@ -106,10 +106,12 @@ namespace Payload.Workers
 
         public void WriteLog(string type, string text, DateTime started)
         {
+            Logger.Write($"Writing Summary Logger... ");
             if (db.State != ConnectionState.Open) db.Open();
 
             var sql = $"INSERT INTO artistgrowth.SyncLog (SyncId, Type, Text, Started, Finished) VALUES ('{_syncId}', '{type}', '{text}', '{started}', '{DateTime.UtcNow}')";
             db.Execute(sql);
+            Logger.WriteLine("done", ConsoleColor.Green);
         }
 
         public void CloseConnection()

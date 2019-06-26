@@ -23,10 +23,12 @@ namespace Payload.Workers
 
         public GCPWorker()
         {
+            Logger.Write("Open connection to GCP... ");
             var conString = "server=52.54.92.183;user id=ParadigmUser;password=aRXeqkp_!KGRWwX5h5&d;persistsecurityinfo=True;database=phase1";
             dbCon = new MySql.Data.MySqlClient.MySqlConnection(conString);
             dbCon.Open();
             dbCon.ChangeDatabase("phase1");
+            Logger.WriteLine("done", ConsoleColor.Green);
         }
 
         public List<GCPArtist> GetArtistList(List<ArtistXref> xrefArtists)
@@ -53,6 +55,8 @@ namespace Payload.Workers
 
         public List<GCPVenue> GetVenueList(List<ArtistXref> xrefArtists)
         {
+            Logger.WriteLine("Get GCP Venues:");
+
             var ids = xrefArtists.Select(i => i.GCPArtistId).ToList();
             var idList = string.Join(",", ids);
             var temp = $"SELECT DISTINCT `venueId` FROM `Show` Where `artistId` in ({idList}) AND `venueId` IS NOT null";
@@ -70,6 +74,8 @@ namespace Payload.Workers
 
             temp = query.ToString();
             var venues = dbCon.Query<GCPVenue>(temp).ToList();
+
+            Logger.WriteLine($"  {venues.Count} ", ConsoleColor.Green, "venue records retrieved");
 
             return venues;
         }

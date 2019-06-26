@@ -11,11 +11,11 @@ namespace Payload
 {
     public class FunctionalPayload
     {
-        private static ILogger _log;
-        private static TempoWorker _tempoWorker;
-        private static GCPWorker _gcpWorker;
-        private static AGWorker _agWorker;
-        private static List<GCPArtist> _gcpArtists;
+        private readonly ILogger _log;
+        private TempoWorker _tempoWorker;
+        private GCPWorker _gcpWorker;
+        private AGWorker _agWorker;
+        private List<GCPArtist> _gcpArtists;
 
         public FunctionalPayload(ILogger log)
         {
@@ -31,14 +31,16 @@ namespace Payload
             await Task.CompletedTask;
         }
 
-        static async Task<bool> ProcessArtistGrowth()
+        private async Task<bool> ProcessArtistGrowth()
         {
             var startTime = DateTime.UtcNow;
             try
             {
+                Logger.WriteLine(":::Sync GCP with Artist Growth:::");
+
                 // initialize Workers
                 var b = await Initialize();
-
+                
                 // update the GCP Artist record with the AG ID from the X-Ref
                 foreach (var artist in _tempoWorker.ArtistXrefs)
                 {
@@ -59,40 +61,8 @@ namespace Payload
                             itinVenue.AGVenueId = venue?.AGVenueId;
                         }
 
-                        // update existing venues in AG (if needed)
-                        Logger.Write($"   Updating venues in Artist Growth... ");
-                        var linkedVenues = itin.Venues.Where(w => w.AGVenueId != null).ToList();
-                        await _agWorker.SyncVenues(linkedVenues);
-                        var c = linkedVenues.Count(w => w.ActionTaken.StartsWith("Updated"));
-                        Logger.WriteLine($"{c} ", ConsoleColor.Red, "venues updated done");
-
-                        // find any unlinked venues and sync with AG
-                        var unlinkedVenues = itin.Venues.Where(w => w.AGVenueId == null).ToList();
-                        if (unlinkedVenues.Any())
-                        {
-                            //sync the missing unlinked venues with AG and update the xref table
-                            Logger.Write($"   Inserting ");
-                            Logger.Write($"{unlinkedVenues.Count}", ConsoleColor.Green);
-                            Logger.Write($" new venue records into Artist Growth... ");
-                            var m = await _agWorker.SyncVenues(unlinkedVenues);
-                            Logger.WriteLine("done", ConsoleColor.Green);
-
-                            // log any AG errors
-                            foreach (var venue in unlinkedVenues)
-                            {
-                                if (venue.ActionTaken.StartsWith("Insert Failed"))
-                                {
-                                    Logger.Write($"      {venue.name} [{venue.alternateId}]: ");
-                                    Logger.WriteLine($" {venue.ActionTaken} ", ConsoleColor.Red);
-                                    _tempoWorker.WriteLog("Detail", $"{venue.name} [{venue.alternateId}]: {venue.ActionTaken}", DateTime.UtcNow);
-                                }
-                            }
-
-                            // write the new xrefs to the table for future syncs
-                            Logger.Write($"   Updating Venue XRef table in Tempo ");
-                            _tempoWorker.AddVenueXref(unlinkedVenues);
-                            Logger.WriteLine("done", ConsoleColor.Green);
-                        }
+                        await _agWorker.SyncVenues(itin.Venues);
+                        _tempoWorker.AddVenueXref(itin.Venues);
 
                         // populate artist and venue data in the show
                         foreach (var show in itin.Shows)
@@ -109,21 +79,7 @@ namespace Payload
 
                         //at this point we hopefully have all the venues related to the show for this client in AG
                         //  so we should be able to update/insert all the shows for the client now
-                        Logger.Write($"   Syncing ");
-                        Logger.Write($"{itin.Shows.Count} ", ConsoleColor.Green);
-                        Logger.Write($"unique show records with Artist Growth... ");
                         var n = await _agWorker.SyncEvents(itin.Shows);
-                        Logger.WriteLine("done", ConsoleColor.Green);
-
-                        foreach (var show in itin.Shows)
-                        {
-                            if (show.ActionTaken.StartsWith("Show Skipped") || show.ActionTaken.StartsWith("Insert Failed"))
-                            {
-                                Logger.Write($"      {show.ShowName} [{show.alternateId}]: ");
-                                Logger.WriteLine($" {show.ActionTaken} ", ConsoleColor.Red);
-                                _tempoWorker.WriteLog("Detail", $"{show.ShowName} [{show.alternateId}]: {show.ActionTaken}", DateTime.UtcNow);
-                            }
-                        }
 
                         _tempoWorker.AddShowXref(itin.Shows);
 
@@ -138,18 +94,18 @@ namespace Payload
             }
             finally
             {
-                Logger.Write($"Writing Summary Logger... ");
                 var logData = Logger.sbLog.ToString();
                 _tempoWorker.WriteLog("Summary", logData, startTime);
                 _tempoWorker.CloseConnection();
-                Logger.WriteLine("done", ConsoleColor.Green);
             }
 
             return true;
         }
 
-        static async Task<bool> UpdateAlternateIdsInArtistGrowth()
+        private async Task<bool> UpdateAlternateIdsInArtistGrowth()
         {
+            Logger.WriteLine(":::Update Artist Growth alternateIds:::");
+
             // initialize Workers
             var b = await Initialize();
 
@@ -254,8 +210,10 @@ namespace Payload
             return true;
         }
 
-        static async Task<bool> GetAlternateIdsInArtistGrowth()
+        private async Task<bool> GetAlternateIdsInArtistGrowth()
         {
+            Logger.WriteLine(":::Get Artist Growth alternate Ids:::");
+
             // initialize Workers
             var b = await Initialize();
 
@@ -292,11 +250,9 @@ namespace Payload
             return true;
         }
 
-        static async Task<bool> Initialize()
+        private async Task<bool> Initialize()
         {
             //// Tempo: Get Artist Xref
-            Logger.WriteLine(":::Update Artist Growth alternateIds:::");
-
             _tempoWorker = new TempoWorker();
 
             //// GCP: Get Artists from GCP

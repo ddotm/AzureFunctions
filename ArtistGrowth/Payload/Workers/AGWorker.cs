@@ -86,10 +86,7 @@ namespace Payload.Workers
         // VENUES
         public async Task<bool> SyncVenues(List<GCPVenue> gcpVenues)
         {
-            Logger.Write($"   Updating venues in Artist Growth... ");
-            Logger.Write($"   Inserting ");
-            Logger.Write($"{gcpVenues.Count}", ConsoleColor.Green);
-            Logger.Write($" new venue records into Artist Growth... ");
+            Logger.Write($"   Sync venues with Artist Growth... ");
 
             foreach (var gcpVenue in gcpVenues)
             {
@@ -104,11 +101,13 @@ namespace Payload.Workers
                         gcpVenue.AGVenueId = agVenue.pk;
                         agVenue = await UpdateVenue(gcpVenue, false);
                         gcpVenue.ActionTaken = "Updated";
+                        Logger.WriteLine($"      Venue Updated: {gcpVenue.name} [{gcpVenue.alternateId}]");
                     }
                     else
                     {
                         gcpVenue.AGVenueId = agVenue.pk;
-                        gcpVenue.ActionTaken = "Venue already up to date";
+                        gcpVenue.ActionTaken = "Current";
+                        Logger.WriteLine($"      Venue Current: {gcpVenue.name} [{gcpVenue.alternateId}]");
                     }
                 } else
                 {
@@ -117,16 +116,16 @@ namespace Payload.Workers
                         agVenue = await UpdateVenue(gcpVenue, true);
                         gcpVenue.AGVenueId = (agVenue == null) ? "" : agVenue.pk;
                         gcpVenue.ActionTaken = "Inserted";
+                        Logger.WriteLine($"      Venue Inserted: {gcpVenue.name} [{gcpVenue.alternateId}]");
                     }
                     catch (Exception e)
                     {
-                        gcpVenue.ActionTaken = $"Insert Failed: {e.Message}";
+                        gcpVenue.ActionTaken = $"Failed: {e.Message}";
+                        Logger.Write($"      Venue Error: {gcpVenue.name} [{gcpVenue.alternateId}]:");
+                        Logger.Write($"{e.Message}", ConsoleColor.Red);
                     }
                 }
             }
-
-            var c = gcpVenues.Count(w => w.ActionTaken.StartsWith("Updated"));
-            Logger.WriteLine($"{c} ", ConsoleColor.Red, "venues updated done");
 
             return true;
         }
@@ -219,6 +218,8 @@ namespace Payload.Workers
         // SHOWS/EVENTS
         public async Task<bool> SyncEvents(List<GCPShow> gcpShows)
         {
+            Logger.Write($"   Sync shows with Artist Growth... ");
+
             foreach (var gcpShow in gcpShows)
             {
                 if (string.IsNullOrWhiteSpace(gcpShow.TranslateStatus()) == false)
@@ -229,6 +230,7 @@ namespace Payload.Workers
                         gcpShow.AGEvent_pk = agEvent.pk;
                         agEvent = await UpdateEvent(gcpShow, false);
                         gcpShow.ActionTaken = "None";
+                        Logger.WriteLine($"      Show Updated: {agEvent.name} [{agEvent.alternate_id}]");
                     }
                     else
                     {
@@ -237,15 +239,19 @@ namespace Payload.Workers
                             agEvent = await UpdateEvent(gcpShow, true);
                             gcpShow.AGEvent_pk = (agEvent == null) ? "" : agEvent.pk;
                             gcpShow.ActionTaken = "Inserted";
+                            Logger.WriteLine($"      Show Inserted: {agEvent.name} [{agEvent.alternate_id}]");
                         }
                         catch (Exception e)
                         {
                             gcpShow.ActionTaken = $"Insert Failed: {e.Message}";
+                            Logger.Write($"      Show Error: {agEvent.name} [{agEvent.alternate_id}]:");
+                            Logger.Write($"{e.Message}", ConsoleColor.Red);
                         }
                     }
                 }
                 else {
                     gcpShow.ActionTaken = $"Show Skipped for INVALID status: {gcpShow.status}";
+                    Logger.WriteLine($"      Show Skipped (status): {gcpShow.ShowName} [{gcpShow.alternateId}]");
                 }
             }
 
