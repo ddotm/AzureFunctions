@@ -1,0 +1,9 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "AzureWebJobsDashboard": "UseDevelopmentStorage=true",
+    "SQLConnectStr1": "SQL connection string 1 in local.settings.json",
+    "SQLConnectStr2": "SQL connection string 2 in local.settings.json"
+  }
+}
