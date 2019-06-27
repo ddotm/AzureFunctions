@@ -20,6 +20,7 @@ namespace Payload
 		{
 			_log.LogInformation($"Azure Function with timer trigger (with CI/CD). Executed at: {DateTime.Now}");
 			_log.LogInformation($"Configuration data SQLConnectStr1: {_config["SQLConnectStr1"]}");
+			_log.LogInformation($"Configuration data SQLConnectStr2: {_config["SQLConnectStr2"]}");
 
 			await Task.CompletedTask;
 		}

@@ -14,8 +14,8 @@ namespace AzureFunction
 		{
 			var configBuilder = new ConfigurationBuilder()
 				.SetBasePath(context.FunctionAppDirectory)
-				.AddEnvironmentVariables()
-				.AddJsonFile("app.settings.json", optional: false, reloadOnChange: true);
+				.AddJsonFile("app.settings.json", optional: false, reloadOnChange: true)
+				.AddEnvironmentVariables();
 			var config = configBuilder.Build();
 
 			var payload = new FunctionalPayload(config, log);
