@@ -1,5 +1,7 @@
 ﻿This is an Architecture Reference project for Azure Function.
 
+[![Build status](https://ddotm.visualstudio.com/ddotm/_apis/build/status/ddotm-Azure%20Functions%20for%20.NET-CI)](https://ddotm.visualstudio.com/ddotm/_build/latest?definitionId=2)
+
 Add Microsoft.Extensions.Configuration.Abstractions NuGet package to use configurations
 
 To run it locally
