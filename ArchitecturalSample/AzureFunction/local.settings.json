@@ -2,8 +2,8 @@
   "IsEncrypted": false,
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "AzureWebJobsDashboard": "UseDevelopmentStorage=true",
-    "SQLConnectStr1": "SQL connection string 1 in local.settings.json",
-    "SQLConnectStr2": "SQL connection string 2 in local.settings.json"
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "ConfigProperty1": "config property 1 value",
+    "ConfigProperty2": "config property 2 value"
   }
 }
