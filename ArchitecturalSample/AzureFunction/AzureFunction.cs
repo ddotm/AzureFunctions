@@ -9,8 +9,8 @@ namespace AzureFunction
 {
 	public static class AzureFunction
     {
-        [FunctionName("AzureFunction")]
-        public static async Task RunAsync([TimerTrigger("*/10 * * * * *")] TimerInfo myTimer, ILogger log,
+        [FunctionName("AzureFunction1")]
+        public static async Task Func1RunAsync([TimerTrigger("*/10 * * * * *")] TimerInfo myTimer, ILogger log,
             ExecutionContext context)
         {
             var configBuilder = new ConfigurationBuilder()
@@ -22,8 +22,27 @@ namespace AzureFunction
             Config.SetConfig(config);
             Logger.SetLogger(log);
 
+            Logger.Write("Function 1 running...");
 			var payload = new FunctionalPayload();
             await payload.ExecuteAsync();
         }
-    }
+
+        [FunctionName("AzureFunction2")]
+        public static async Task Func2RunAsync([TimerTrigger("*/7 * * * * *")] TimerInfo myTimer, ILogger log,
+	        ExecutionContext context)
+        {
+	        var configBuilder = new ConfigurationBuilder()
+		        .SetBasePath(context.FunctionAppDirectory)
+		        .AddJsonFile("app.settings.json", optional: true, reloadOnChange: true)
+		        .AddEnvironmentVariables();
+	        var config = configBuilder.Build();
+
+	        Config.SetConfig(config);
+	        Logger.SetLogger(log);
+
+			Logger.Write("Function 2 running...");
+	        var payload = new FunctionalPayload();
+	        await payload.ExecuteAsync();
+        }
+	}
 }
