@@ -15,7 +15,7 @@ namespace AzureFunction
         {
             var configBuilder = new ConfigurationBuilder()
                 .SetBasePath(context.FunctionAppDirectory)
-                .AddJsonFile("app.settings.json", optional: true, reloadOnChange: true)
+                //.AddJsonFile("app.settings.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables();
             var config = configBuilder.Build();
 
@@ -33,7 +33,7 @@ namespace AzureFunction
         {
 	        var configBuilder = new ConfigurationBuilder()
 		        .SetBasePath(context.FunctionAppDirectory)
-		        .AddJsonFile("app.settings.json", optional: true, reloadOnChange: true)
+		        //.AddJsonFile("app.settings.json", optional: true, reloadOnChange: true)
 		        .AddEnvironmentVariables();
 	        var config = configBuilder.Build();
 

@@ -1,6 +1,6 @@
 {
   "disabled": false,
-  "entryPoint": "RunAsync",
+  "entryPoint": "AzureFunction1",
   "bindings": [
     {
       "type": "timerTrigger",
